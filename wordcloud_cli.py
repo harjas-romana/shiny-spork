@@ -54,11 +54,22 @@ from nltk.stem import WordNetLemmatizer
 # ---------------------------------------------------------------------------
 # NLTK setup – download required corpora on demand
 # ---------------------------------------------------------------------------
-for pkg in ("punkt", "stopwords", "wordnet", "averaged_perceptron_tagger"):
-    try:
-        nltk.data.find(pkg)
-    except LookupError:  # pragma: no cover – only on first run
-        nltk.download(pkg, quiet=True)
+def ensure_nltk_data():
+    """Ensure all required NLTK data is available, downloading if necessary."""
+    required_packages = ["punkt", "stopwords", "wordnet", "averaged_perceptron_tagger"]
+    
+    for pkg in required_packages:
+        try:
+            nltk.data.find(pkg)
+        except LookupError:
+            try:
+                nltk.download(pkg, quiet=True)
+            except Exception as e:
+                print(f"Warning: Could not download NLTK package '{pkg}': {e}")
+                # Continue anyway - some packages might work without others
+
+# Call this function to ensure data is available
+ensure_nltk_data()
 
 # ---------------------------------------------------------------------------
 # Text preprocessing helpers
@@ -81,20 +92,38 @@ def clean_and_tokenise(text: str, remove_stopwords: bool = True) -> List[str]:
     text = text.lower()
     text = re.sub(r"[^a-z\s]", " ", text)
 
-    tokens = word_tokenize(text)
+    # Try NLTK tokenization first, fallback to simple split if it fails
+    try:
+        tokens = word_tokenize(text)
+    except LookupError:
+        # Fallback: simple word splitting
+        tokens = text.split()
+        tokens = [token for token in tokens if len(token) > 1]  # Remove single characters
 
     if remove_stopwords:
-        sw = set(stopwords.words("english"))
-        tokens = [t for t in tokens if t not in sw]
+        try:
+            sw = set(stopwords.words("english"))
+            tokens = [word for word in tokens if word not in sw]
+        except LookupError:
+            # Fallback: basic English stopwords if NLTK data not available
+            basic_stopwords = {
+                'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'he', 
+                'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the', 'to', 'was', 'will', 'with'
+            }
+            tokens = [word for word in tokens if word not in basic_stopwords]
 
     return tokens
 
 
 def lemmatise(tokens: Iterable[str]) -> List[str]:
     """Lemmatise tokens using part-of-speech information."""
-    pos_tags = pos_tag(tokens)
-    lemmatiser = WordNetLemmatizer()
-    return [lemmatiser.lemmatize(word, _get_wordnet_pos(pos)) for word, pos in pos_tags]
+    try:
+        pos_tags = pos_tag(tokens)
+        lemmatiser = WordNetLemmatizer()
+        return [lemmatiser.lemmatize(word, _get_wordnet_pos(pos)) for word, pos in pos_tags]
+    except LookupError:
+        # Fallback: return tokens as-is if NLTK data not available
+        return list(tokens)
 
 
 def compute_frequencies(tokens: Iterable[str]) -> Counter:

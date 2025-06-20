@@ -49,6 +49,13 @@ if not MATPLOTLIB_AVAILABLE:
     """)
     st.stop()
 
+# Initialize NLTK data
+try:
+    from wordcloud_cli import ensure_nltk_data
+    ensure_nltk_data()
+except Exception as e:
+    st.warning(f"Could not initialize NLTK data: {e}. App will use fallback methods.")
+
 # -----------------------------------------------------------------------------
 # Sidebar – input & customisation controls
 # -----------------------------------------------------------------------------
