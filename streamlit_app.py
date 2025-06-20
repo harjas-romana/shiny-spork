@@ -9,7 +9,15 @@ import random
 from pathlib import Path
 from typing import List
 
-import matplotlib.pyplot as plt
+# Import matplotlib with error handling for deployment
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
+    st.error("Matplotlib is not available. Please install it: pip install matplotlib")
+
 import numpy as np
 import streamlit as st
 from PIL import Image
@@ -28,6 +36,18 @@ st.set_page_config(
     page_icon="🧠",
     layout="wide",
 )
+
+# Check if required packages are available
+if not MATPLOTLIB_AVAILABLE:
+    st.error("""
+    **Required packages are missing!** 
+    
+    Please install the required dependencies:
+    ```bash
+    pip install matplotlib numpy pillow wordcloud nltk streamlit
+    ```
+    """)
+    st.stop()
 
 # -----------------------------------------------------------------------------
 # Sidebar – input & customisation controls
@@ -77,8 +97,6 @@ colour_mode = st.sidebar.radio(
 colormap = None
 palette: List[str] | None = None
 if colour_mode == "Matplotlib colormap":
-    import matplotlib
-
     # Matplotlib ≥3.7 no longer exposes `cmap_d`; use the new API with fallback
     try:
         cmap_names = sorted(matplotlib.pyplot.colormaps())  # type: ignore[attr-defined]
